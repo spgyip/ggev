@@ -19,12 +19,17 @@ def usage()
   puts " pull"
 end
 
-def run_cmd(cmd)
+def run_cmd_with_exitstatus(cmd)
   logger = Logger.new(STDOUT)
   if not system(cmd) 
-    return false
+    return false, $?.exitstatus
   end
-  return true
+  return true, $?.exitstatus
+end
+
+def run_cmd(cmd)
+  ok, es = run_cmd_with_exitstatus(cmd)
+  return ok
 end
 
 def must_run_cmd(cmd)
@@ -43,15 +48,6 @@ cmd = ARGV[0]
 ## Load config
 cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
 
-## Pre-check environment
-for bin in ["openssl", "git"] 
-  logger.info("Checking `#{bin}`...")
-  if not run_cmd("which #{bin}")
-    logger.error("Missing `#{bin}` which is required.")
-    exit
-  end
-end
-
 ## Prepare project directories
 if not Dir::exists?(DEFAULT_HOME_PATH)
   logger.info("#{DEFAULT_HOME_PATH} not found, creating ...")
@@ -63,8 +59,11 @@ if not Dir::exists?(REPO_PATH)
   must_run_cmd("git clone #{cfg["repo"]["remote"]} #{REPO_PATH}")
 end
 
-
 ## Process commands
+if cmd=="init"
+  puts "TODO"
+end
+
 if cmd=="push"
   cfg["modules"].each { |mod|
     puts "Processing module #{mod["name"]} ..."
@@ -74,13 +73,13 @@ if cmd=="push"
       FileUtils::mkdir_p(mod_path)
     end
 
-    mod["files"].each { |from_file_path|
-      from_file_path = File::expand_path(from_file_path)
-      file_name = File::basename(from_file_path)
-      to_file_path = "#{mod_path}/#{file_name}"
+    mod["files"].each { |origin_file_path|
+      origin_file_path = File::expand_path(origin_file_path)
+      file_name = File::basename(origin_file_path)
+      cache_file_path = "#{mod_path}/#{file_name}"
 
-      logger.info("#{from_file_path} =(enc)=> #{to_file_path} ...")
-      run_cmd("openssl enc -#{DEFAULT_ENC_CIPHER} -base64 -k #{cfg["encrypt"]["key"]} -in #{from_file_path} -out #{to_file_path}")
+      logger.info("#{origin_file_path} =(enc)=> #{cache_file_path} ...")
+      must_run_cmd("openssl enc -#{DEFAULT_ENC_CIPHER} -base64 -k #{cfg["encrypt"]["key"]} -in #{origin_file_path} -out #{cache_file_path}")
     }
   }
 
@@ -93,5 +92,44 @@ if cmd=="push"
     must_run_cmd("git -P diff --cached --stat")
     must_run_cmd("git commit -a -m 'auto-commit by ggev'")
     must_run_cmd("git push origin master")
+  }
+end
+
+if cmd=="pull"
+  ### Pull resp
+  Dir::chdir(REPO_PATH) {
+    must_run_cmd("git fetch origin master")
+    ok, ec = run_cmd_with_exitstatus("git diff --exit-code --stat origin/master")
+
+    if ok
+      # Unchanged
+      logger.info("Unchanged")
+      return
+    end
+
+    # Other error
+    if ec!=1 
+      return
+    end
+
+    # ec==1
+    # Something changed
+    must_run_cmd("git merge origin/master ")
+  }
+
+  cipher = File::read("#{REPO_PATH}/.cipher")
+
+  cfg["modules"].each { |mod|
+    puts "Processing module #{mod["name"]} ..."
+
+    mod_path = "#{REPO_PATH}/#{mod["name"]}"
+    mod["files"].each { |origin_file_path|
+      origin_file_path = File::expand_path(origin_file_path)
+      file_name = File::basename(origin_file_path)
+      cache_file_path = "#{mod_path}/#{file_name}"
+
+      logger.info("#{cache_file_path} =(enc)=> #{origin_file_path} ...")
+      must_run_cmd("openssl enc -#{cipher} -base64 -k #{cfg["encrypt"]["key"]} -d -in #{cache_file_path} -out #{origin_file_path}")
+    }
   }
 end

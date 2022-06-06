@@ -2,7 +2,7 @@
 repo:
   remote: "git@github.com:anticpp/linuxenv.git"
 
-## MOST IMPORTANT!!! - Set your encrypt key to keep your data security.
+## MOST IMPORTANT!!! - Set your encrypt key to keep your data secure.
 encrypt:
   key: "123"
 
