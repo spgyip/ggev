@@ -2,6 +2,7 @@
 repo:
   remote: "git@github.com:anticpp/linuxenv.git"
 
+## MOST IMPORTANT!!! - Set your encrypt key to keep your data security.
 encrypt:
   key: "123"
 
@@ -10,22 +11,17 @@ encrypt:
 modules:
   - name: vim
     files: 
-      - origin: "~/.vimrc"
-        cache: ".vimrc"
+      - "~/.vimrc"
   - name: git
     files: 
-      - origin: "~/.gitconfig"
-        cache: ".gitconfig"
+      - "~/.gitconfig"
   - name: zsh
     files:
-      - origin: "~/.zshrc"
-        cache: ".zshrc"
+      - "~/.zshrc"
   - name: tmux
     files:
-      - origin: "~/.tmux.conf"
-        cache: ".tmux.conf"
+      - "~/.tmux.conf"
   - name: autossh
     files:
-      - origin: "~/.config/autossh/hosts"
-        cache: "hosts"
+      - "~/.config/autossh/hosts"
 

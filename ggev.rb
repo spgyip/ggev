@@ -5,8 +5,8 @@ require "yaml"
 
 # Constants
 DEFAULT_CONFIG_FILE="./config/ggev.yaml"
-DEFAULT_PATH=File::expand_path("~/.ggev/")
-REPO_PATH="#{DEFAULT_PATH}/repo/"
+DEFAULT_HOME_PATH=File::expand_path("~/.ggev")
+REPO_PATH="#{DEFAULT_HOME_PATH}/repo"
 DEFAULT_ENC_CIPHER="aes-128-cbc"
 
 # Functions
@@ -40,6 +40,9 @@ if ARGV.length < 1
 end
 cmd = ARGV[0]
 
+## Load config
+cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
+
 ## Pre-check environment
 for bin in ["openssl", "git"] 
   logger.info("Checking `#{bin}`...")
@@ -50,9 +53,9 @@ for bin in ["openssl", "git"]
 end
 
 ## Prepare project directories
-if not Dir::exists?(DEFAULT_PATH)
-  logger.info("#{DEFAULT_PATH} not found, creating ...")
-  Dir.mkdir(DEFAULT_PATH)
+if not Dir::exists?(DEFAULT_HOME_PATH)
+  logger.info("#{DEFAULT_HOME_PATH} not found, creating ...")
+  Dir.mkdir(DEFAULT_HOME_PATH)
 end
 
 if not Dir::exists?(REPO_PATH)
@@ -60,25 +63,24 @@ if not Dir::exists?(REPO_PATH)
   must_run_cmd("git clone #{cfg["repo"]["remote"]} #{REPO_PATH}")
 end
 
-## Load config
-cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
 
 ## Process commands
 if cmd=="push"
   cfg["modules"].each { |mod|
     puts "Processing module #{mod["name"]} ..."
 
-    mod_path = "#{REPO_PATH}/#{mod["name"]}/"
+    mod_path = "#{REPO_PATH}/#{mod["name"]}"
     if not Dir::exists?(mod_path)
-      logger.info("Mkdir #{mod_path} ...")
-      Dir::mkdir(mod_path)
+      FileUtils::mkdir_p(mod_path)
     end
 
-    mod["files"].each { |file|
-      origin_file = File::expand_path(file["origin"])
-      cache_file = "#{mod_path}/#{file["cache"]}"
-      logger.info("#{origin_file} =(enc)=> #{cache_file} ...")
-      run_cmd("openssl enc -#{DEFAULT_ENC_CIPHER} -base64 -k #{cfg["encrypt"]["key"]} -in #{origin_file} -out #{cache_file}")
+    mod["files"].each { |from_file_path|
+      from_file_path = File::expand_path(from_file_path)
+      file_name = File::basename(from_file_path)
+      to_file_path = "#{mod_path}/#{file_name}"
+
+      logger.info("#{from_file_path} =(enc)=> #{to_file_path} ...")
+      run_cmd("openssl enc -#{DEFAULT_ENC_CIPHER} -base64 -k #{cfg["encrypt"]["key"]} -in #{from_file_path} -out #{to_file_path}")
     }
   }
 
