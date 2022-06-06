@@ -1,0 +1,27 @@
+# Must configure on first installation.
+repo:
+  remote: "git@github.com:anticpp/linuxenv.git"
+
+## MOST IMPORTANT!!! - Set your encrypt key to keep your data security.
+encrypt:
+  key: "123"
+
+# Configure as necessary as your requirements,
+# or you can leave as defaults.
+modules:
+  - name: vim
+    files: 
+      - "~/.vimrc"
+  - name: git
+    files: 
+      - "~/.gitconfig"
+  - name: zsh
+    files:
+      - "~/.zshrc"
+  - name: tmux
+    files:
+      - "~/.tmux.conf"
+  - name: autossh
+    files:
+      - "~/.config/autossh/hosts"
+
