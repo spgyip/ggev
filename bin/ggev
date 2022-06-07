@@ -1,10 +1,11 @@
 #!/usr/bin/ruby
 
-require "logger"
 require "yaml"
+require "config/default.rb"
+require "fileutils"
 
 # Constants
-DEFAULT_CONFIG_FILE="./config/ggev.yaml"
+DEFAULT_CONFIG_FILE=File::expand_path("~/.config/ggev/config.yaml")
 DEFAULT_HOME_PATH=File::expand_path("~/.ggev")
 REPO_PATH="#{DEFAULT_HOME_PATH}/repo"
 DEFAULT_ENC_CIPHER="aes-128-cbc"
@@ -16,11 +17,10 @@ def usage()
   puts "Commands:"
   puts " init"
   puts " push"
-  puts " pull"
+  puts " pull [-f|--force]"
 end
 
 def run_cmd_with_exitstatus(cmd)
-  logger = Logger.new(STDOUT)
   if not system(cmd) 
     return false, $?.exitstatus
   end
@@ -37,34 +37,71 @@ def must_run_cmd(cmd)
 end
 
 # Main
-logger = Logger::new(STDOUT)
-
 if ARGV.length < 1
   usage()
   exit
 end
+
+# ARGV pop command
 cmd = ARGV[0]
-
-## Load config
-cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
-
-## Prepare project directories
-if not Dir::exists?(DEFAULT_HOME_PATH)
-  logger.info("#{DEFAULT_HOME_PATH} not found, creating ...")
-  Dir.mkdir(DEFAULT_HOME_PATH)
-end
-
-if not Dir::exists?(REPO_PATH)
-  logger.info("Cloning repo ...")
-  must_run_cmd("git clone #{cfg["repo"]["remote"]} #{REPO_PATH}")
-end
+ARGV.slice!(0)
 
 ## Process commands
 if cmd=="init"
-  puts "TODO"
+  if File.exists?(DEFAULT_CONFIG_FILE)
+    puts "Initiated already"
+    puts "See #{DEFAULT_CONFIG_FILE}"
+    exit
+  end
+
+  ## Default config
+  FileUtils::mkdir_p(File::dirname(DEFAULT_CONFIG_FILE))
+
+  puts "Enter git repository to store/save your configs."
+  repo = ""
+  while repo.length==0 
+    print "Repository: "
+    repo = STDIN.gets.strip
+  end
+
+  puts "Enter secret key to encrypt/descrypt your configs."
+  key = ""
+  while key.length==0 
+    print "Key: "
+    key = STDIN.gets.strip
+  end
+
+  defaultCfg = GGEV::CONFIG.default
+  defaultCfg["repo"]["remote"] = repo
+  defaultCfg["encrypt"]["key"] = key
+  File::write(DEFAULT_CONFIG_FILE, defaultCfg.to_yaml)
+
+  ## Home dir
+  if not Dir::exists?(DEFAULT_HOME_PATH)
+    FileUtils.mkdir_p(DEFAULT_HOME_PATH)
+  end
+
+  if not Dir::exists?(REPO_PATH)
+    must_run_cmd("git clone #{repo} #{REPO_PATH}")
+  end
+
+  ## DONE
+  puts ""
+  puts "Congratulations! Init success!"
+  puts "The default config file has been created at #{DEFAULT_CONFIG_FILE}."
+  puts "You can modify it as your necessary."
+end
+
+# Other commands are not allowed before `init` command has been success.
+if not File.exists?(DEFAULT_CONFIG_FILE)
+  puts "Please initiate ggev. "
+  puts "Run `ggev init`"
+  exit
 end
 
 if cmd=="push"
+  cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
+
   cfg["modules"].each { |mod|
     puts "Processing module #{mod["name"]} ..."
 
@@ -78,7 +115,7 @@ if cmd=="push"
       file_name = File::basename(origin_file_path)
       cache_file_path = "#{mod_path}/#{file_name}"
 
-      logger.info("#{origin_file_path} =(enc)=> #{cache_file_path} ...")
+      puts "#{origin_file_path} =(enc)=> #{cache_file_path} ..."
       must_run_cmd("openssl enc -#{DEFAULT_ENC_CIPHER} -base64 -k #{cfg["encrypt"]["key"]} -in #{origin_file_path} -out #{cache_file_path}")
     }
   }
@@ -96,27 +133,43 @@ if cmd=="push"
 end
 
 if cmd=="pull"
+  ifForce = false
+  cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
+
+  # Process args
+  ARGV.each { |arg|
+    if arg=="-f" or arg=="--force" 
+      ifForce = true
+    end
+  }
+
   ### Pull resp
   Dir::chdir(REPO_PATH) {
     must_run_cmd("git fetch origin master")
     ok, ec = run_cmd_with_exitstatus("git diff --exit-code --stat origin/master")
 
-    if ok
+    if ok 
       # Unchanged
-      logger.info("Unchanged")
-      return
-    end
+      puts "Unchanged"
 
-    # Other error
-    if ec!=1 
-      return
-    end
+      if not ifForce
+        return
+      else
+        puts "Force pull"
+      end
+    else
+      # Error happen
+      if ec!=1 
+        return
+      end
 
-    # ec==1
-    # Something changed
-    must_run_cmd("git merge origin/master ")
+      # ec==1
+      # Something changed
+      must_run_cmd("git merge origin/master ")
+    end
   }
 
+  # Read cipher
   cipher = File::read("#{REPO_PATH}/.cipher")
 
   cfg["modules"].each { |mod|
@@ -128,7 +181,7 @@ if cmd=="pull"
       file_name = File::basename(origin_file_path)
       cache_file_path = "#{mod_path}/#{file_name}"
 
-      logger.info("#{cache_file_path} =(enc)=> #{origin_file_path} ...")
+      puts "#{cache_file_path} =(enc)=> #{origin_file_path} ..."
       must_run_cmd("openssl enc -#{cipher} -base64 -k #{cfg["encrypt"]["key"]} -d -in #{cache_file_path} -out #{origin_file_path}")
     }
   }
