@@ -12,5 +12,6 @@ ggev init
 
 - [X] Use `gem`
 - [X] Command `init`
-- Specify module for `push/pull`
-- Watch filesystem changed
+- [ ] Specify module for `push/pull`
+- [ ] Watch filesystem changed
+- [ ] Reconstruct command processor
