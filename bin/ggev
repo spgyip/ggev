@@ -2,6 +2,8 @@
 
 require "logger"
 require "yaml"
+require "config/default.rb"
+require "fileutils"
 
 # Constants
 DEFAULT_CONFIG_FILE=File::expand_path("~/.config/ggev/config.yaml")
@@ -45,26 +47,62 @@ if ARGV.length < 1
 end
 cmd = ARGV[0]
 
-## Load config
-cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
-
-## Prepare project directories
-if not Dir::exists?(DEFAULT_HOME_PATH)
-  logger.info("#{DEFAULT_HOME_PATH} not found, creating ...")
-  Dir.mkdir(DEFAULT_HOME_PATH)
-end
-
-if not Dir::exists?(REPO_PATH)
-  logger.info("Cloning repo ...")
-  must_run_cmd("git clone #{cfg["repo"]["remote"]} #{REPO_PATH}")
-end
-
 ## Process commands
 if cmd=="init"
-  puts "TODO"
+  if File.exists?(DEFAULT_CONFIG_FILE)
+    puts "Initiated already"
+    puts "See #{DEFAULT_CONFIG_FILE}"
+    exit
+  end
+
+  ## Default config
+  FileUtils::mkdir_p(File::dirname(DEFAULT_CONFIG_FILE))
+
+  puts "Enter git repository to store/save your configs."
+  repo = ""
+  while repo.length==0 
+    print "Repository: "
+    repo = STDIN.gets.strip
+  end
+
+  puts "Enter secret key to encrypt/descrypt your configs."
+  key = ""
+  while key.length==0 
+    print "Key: "
+    key = STDIN.gets.strip
+  end
+
+  defaultCfg = GGEV::CONFIG.default
+  defaultCfg["repo"]["remote"] = repo
+  defaultCfg["encrypt"]["key"] = key
+  File::write(DEFAULT_CONFIG_FILE, defaultCfg.to_yaml)
+
+  ## Home dir
+  if not Dir::exists?(DEFAULT_HOME_PATH)
+    FileUtils.mkdir_p(DEFAULT_HOME_PATH)
+  end
+
+  if not Dir::exists?(REPO_PATH)
+    must_run_cmd("git clone #{repo} #{REPO_PATH}")
+  end
+
+  ## DONE
+  puts ""
+  puts "Congratulations! Init success!"
+  puts "The default config file has been created at #{DEFAULT_CONFIG_FILE}."
+  puts "You can modify it as your necessary."
+end
+
+# All commands are not allowed before `init` command has been success.
+if not File.exists?(DEFAULT_CONFIG_FILE)
+  puts "Please initiate ggev. "
+  puts "Run `ggev init`"
+  exit
 end
 
 if cmd=="push"
+  cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
+
   cfg["modules"].each { |mod|
     puts "Processing module #{mod["name"]} ..."
 
@@ -96,6 +134,8 @@ if cmd=="push"
 end
 
 if cmd=="pull"
+  cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
+
   ### Pull resp
   Dir::chdir(REPO_PATH) {
     must_run_cmd("git fetch origin master")

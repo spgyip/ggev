@@ -1,13 +1,16 @@
 Guigui env
 =================
 
-# Config
+# Install
 
-See `./config/ggev.yaml`
+```
+gem install ggev
+ggev init
+```
 
 # TODO
 
-- Use `gem`
-- Command `init`
+- [X] Use `gem`
+- [X] Command `init`
 - Specify module for `push/pull`
 - Watch filesystem changed
