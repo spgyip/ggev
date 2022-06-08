@@ -12,6 +12,7 @@ ggev init
 
 - [X] Use `gem`
 - [X] Command `init`
+- [ ] Check local version when `push`
 - [ ] Specify module for `push/pull`
 - [ ] Watch filesystem changed
 - [ ] Reconstruct command processor
