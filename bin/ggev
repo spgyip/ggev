@@ -3,6 +3,7 @@
 require "yaml"
 require "config/default.rb"
 require "fileutils"
+require "socket"
 
 # Constants
 DEFAULT_CONFIG_FILE=File::expand_path("~/.config/ggev/config.yaml")
@@ -46,7 +47,6 @@ end
 cmd = ARGV[0]
 ARGV.slice!(0)
 
-puts "test for new version"
 
 ## Process commands
 if cmd=="init"
@@ -129,7 +129,7 @@ if cmd=="push"
   Dir::chdir(REPO_PATH) {
     must_run_cmd("git add -A")
     must_run_cmd("git -P diff --cached --stat")
-    must_run_cmd("git commit -a -m 'auto-commit by ggev'")
+    must_run_cmd("git commit -a -m 'auto-commit by ggev on #{Socket.gethostname}'")
     must_run_cmd("git push origin master")
   }
 end
