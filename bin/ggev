@@ -6,6 +6,7 @@ require "fileutils"
 require "socket"
 
 # Constants
+GEM_NAME = "ggev"
 DEFAULT_CONFIG_FILE=File::expand_path("~/.config/ggev/config.yaml")
 DEFAULT_HOME_PATH=File::expand_path("~/.ggev")
 REPO_PATH="#{DEFAULT_HOME_PATH}/repo"
@@ -16,6 +17,7 @@ def usage()
   puts "Usage: #{$PROGRAM_NAME} [command]"
   puts ""
   puts "Commands:"
+  puts " version"
   puts " init"
   puts " push"
   puts " pull [-f|--force]"
@@ -49,6 +51,11 @@ ARGV.slice!(0)
 
 
 ## Process commands
+if cmd=="version"
+  specs = Gem::loaded_specs[GEM_NAME]
+  puts "#{specs.name} #{specs.version}"
+end
+
 if cmd=="init"
   if File.exists?(DEFAULT_CONFIG_FILE)
     puts "Initiated already"

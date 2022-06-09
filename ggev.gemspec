@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "ggev"
-  s.version     = "0.5.0"
+  s.version     = "0.5.4"
   s.summary     = "Guigui ENV!"
   s.description = "Manage personal ENV"
   s.authors     = ["supergui"]
