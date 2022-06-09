@@ -46,6 +46,8 @@ end
 cmd = ARGV[0]
 ARGV.slice!(0)
 
+puts "test for new version"
+
 ## Process commands
 if cmd=="init"
   if File.exists?(DEFAULT_CONFIG_FILE)
@@ -116,7 +118,7 @@ if cmd=="push"
       cache_file_path = "#{mod_path}/#{file_name}"
 
       puts "#{origin_file_path} =(enc)=> #{cache_file_path} ..."
-      must_run_cmd("openssl enc -#{DEFAULT_ENC_CIPHER} -base64 -k #{cfg["encrypt"]["key"]} -in #{origin_file_path} -out #{cache_file_path}")
+      must_run_cmd("openssl enc -#{DEFAULT_ENC_CIPHER} -md sha256 -base64 -k #{cfg["encrypt"]["key"]} -in #{origin_file_path} -out #{cache_file_path}")
     }
   }
 
@@ -182,7 +184,7 @@ if cmd=="pull"
       cache_file_path = "#{mod_path}/#{file_name}"
 
       puts "#{cache_file_path} =(enc)=> #{origin_file_path} ..."
-      must_run_cmd("openssl enc -#{cipher} -base64 -k #{cfg["encrypt"]["key"]} -d -in #{cache_file_path} -out #{origin_file_path}")
+      must_run_cmd("openssl enc -#{cipher} -md sha256 -base64 -k #{cfg["encrypt"]["key"]} -d -in #{cache_file_path} -out #{origin_file_path}")
     }
   }
 end
