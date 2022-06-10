@@ -1,197 +1,62 @@
 #!/usr/bin/ruby
 
-require "yaml"
-require "config/default.rb"
-require "fileutils"
-require "socket"
-
-# Constants
-GEM_NAME = "ggev"
-DEFAULT_CONFIG_FILE=File::expand_path("~/.config/ggev/config.yaml")
-DEFAULT_HOME_PATH=File::expand_path("~/.ggev")
-REPO_PATH="#{DEFAULT_HOME_PATH}/repo"
-DEFAULT_ENC_CIPHER="aes-128-cbc"
+require "internal/const"
+require "internal/command_dispatcher"
+require "internal/cmds/init"
+require "internal/cmds/push"
+require "internal/cmds/pull"
 
 # Functions
-def usage()
-  puts "Usage: #{$PROGRAM_NAME} [command]"
+def usage(prog, cmdNames)
+  puts "Usage: #{prog} [OPTIONS] command"
+  puts "Optios:"
+  puts "  -v, --version         Print version info and exit"
+  puts "  -h, --help            Print help message and exit"
   puts ""
   puts "Commands:"
-  puts " version"
-  puts " init"
-  puts " push"
-  puts " pull [-f|--force]"
-end
-
-def run_cmd_with_exitstatus(cmd)
-  if not system(cmd) 
-    return false, $?.exitstatus
-  end
-  return true, $?.exitstatus
-end
-
-def run_cmd(cmd)
-  ok, es = run_cmd_with_exitstatus(cmd)
-  return ok
-end
-
-def must_run_cmd(cmd)
-  run_cmd(cmd) or exit
+  cmdNames.each { |name|
+    puts "  #{name}"
+  }
 end
 
 # Main
-if ARGV.length < 1
-  usage()
-  exit
-end
+cmdDisp = GGEV::CommandDispatcher.new
+cmdDisp.add(GGEV::InitCommand.new)
+cmdDisp.add(GGEV::PushCommand.new)
+cmdDisp.add(GGEV::PullCommand.new)
 
-# ARGV pop command
-cmd = ARGV[0]
-ARGV.slice!(0)
-
-
-## Process commands
-if cmd=="version"
-  specs = Gem::loaded_specs[GEM_NAME]
-  puts "#{specs.name} #{specs.version}"
-end
-
-if cmd=="init"
-  if File.exists?(DEFAULT_CONFIG_FILE)
-    puts "Initiated already"
-    puts "See #{DEFAULT_CONFIG_FILE}"
-    exit
+## Options arguments,
+#  Start with '-'.
+n_opts = 0
+ARGV.each { |arg|
+  if arg[0]!='-'
+    break
   end
 
-  ## Default config
-  FileUtils::mkdir_p(File::dirname(DEFAULT_CONFIG_FILE))
-
-  puts "Enter git repository to store/save your configs."
-  repo = ""
-  while repo.length==0 
-    print "Repository: "
-    repo = STDIN.gets.strip
-  end
-
-  puts "Enter secret key to encrypt/descrypt your configs."
-  key = ""
-  while key.length==0 
-    print "Key: "
-    key = STDIN.gets.strip
-  end
-
-  defaultCfg = GGEV::CONFIG.default
-  defaultCfg["repo"]["remote"] = repo
-  defaultCfg["encrypt"]["key"] = key
-  File::write(DEFAULT_CONFIG_FILE, defaultCfg.to_yaml)
-
-  ## Home dir
-  if not Dir::exists?(DEFAULT_HOME_PATH)
-    FileUtils.mkdir_p(DEFAULT_HOME_PATH)
-  end
-
-  if not Dir::exists?(REPO_PATH)
-    must_run_cmd("git clone #{repo} #{REPO_PATH}")
-  end
-
-  ## DONE
-  puts ""
-  puts "Congratulations! Init success!"
-  puts "The default config file has been created at #{DEFAULT_CONFIG_FILE}."
-  puts "You can modify it as your necessary."
-end
-
-# Other commands are not allowed before `init` command has been success.
-if not File.exists?(DEFAULT_CONFIG_FILE)
-  puts "Please initiate ggev. "
-  puts "Run `ggev init`"
-  exit
-end
-
-if cmd=="push"
-  cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
-
-  cfg["modules"].each { |mod|
-    puts "Processing module #{mod["name"]} ..."
-
-    mod_path = "#{REPO_PATH}/#{mod["name"]}"
-    if not Dir::exists?(mod_path)
-      FileUtils::mkdir_p(mod_path)
-    end
-
-    mod["files"].each { |origin_file_path|
-      origin_file_path = File::expand_path(origin_file_path)
-      file_name = File::basename(origin_file_path)
-      cache_file_path = "#{mod_path}/#{file_name}"
-
-      puts "#{origin_file_path} =(enc)=> #{cache_file_path} ..."
-      must_run_cmd("openssl enc -#{DEFAULT_ENC_CIPHER} -md sha256 -base64 -k #{cfg["encrypt"]["key"]} -in #{origin_file_path} -out #{cache_file_path}")
-    }
-  }
-
-  ### Cipher
-  File::write("#{REPO_PATH}/.cipher", "#{DEFAULT_ENC_CIPHER}")
-
-  ### Commit repo
-  Dir::chdir(REPO_PATH) {
-    must_run_cmd("git add -A")
-    must_run_cmd("git -P diff --cached --stat")
-    must_run_cmd("git commit -a -m 'auto-commit by ggev on #{Socket.gethostname}'")
-    must_run_cmd("git push origin master")
-  }
-end
-
-if cmd=="pull"
-  ifForce = false
-  cfg = YAML::load_file(DEFAULT_CONFIG_FILE)
-
-  # Process args
-  ARGV.each { |arg|
-    if arg=="-f" or arg=="--force" 
-      ifForce = true
-    end
-  }
-
-  ### Pull resp
-  Dir::chdir(REPO_PATH) {
-    must_run_cmd("git fetch origin master")
-    ok, ec = run_cmd_with_exitstatus("git diff --exit-code --stat origin/master")
-
-    if ok 
-      # Unchanged
-      puts "Unchanged"
-
-      if not ifForce
-        return
-      else
-        puts "Force pull"
-      end
+  n_opts += 1
+  if arg=='-v' or arg=='--version'
+    specs = Gem::loaded_specs[GGEV::GEMNAME]
+    if specs!=nil 
+      puts "#{specs.name} #{specs.version}"
     else
-      # Error happen
-      if ec!=1 
-        return
-      end
-
-      # ec==1
-      # Something changed
-      must_run_cmd("git merge origin/master ")
+      puts "local un-version(not gem)"
     end
-  }
+    return
+  elsif arg=='-h' or arg=='--help'
+    usage($PROGRAM_NAME, cmdDisp.names)
+    return
+  else
+    puts "Unknown option \"#{arg}\""
+    return
+  end
+}
+ARGV.slice!(n_opts-1) if n_opts>0
 
-  # Read cipher
-  cipher = File::read("#{REPO_PATH}/.cipher")
-
-  cfg["modules"].each { |mod|
-    puts "Processing module #{mod["name"]} ..."
-
-    mod_path = "#{REPO_PATH}/#{mod["name"]}"
-    mod["files"].each { |origin_file_path|
-      origin_file_path = File::expand_path(origin_file_path)
-      file_name = File::basename(origin_file_path)
-      cache_file_path = "#{mod_path}/#{file_name}"
-
-      puts "#{cache_file_path} =(enc)=> #{origin_file_path} ..."
-      must_run_cmd("openssl enc -#{cipher} -md sha256 -base64 -k #{cfg["encrypt"]["key"]} -d -in #{cache_file_path} -out #{origin_file_path}")
-    }
-  }
+## Command name
+cmdname = ARGV.slice!(0)
+if cmdname==nil 
+  usage($PROGRAM_NAME, cmdDisp.names)
+  return
 end
+cmdDisp.proc(cmdname, ARGV) or puts "Unknown command \"#{cmdname}\""
+

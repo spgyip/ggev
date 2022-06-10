@@ -1,6 +1,6 @@
 
 module GGEV
-  module CONFIG
+  module Config
   
     @@default = {
       "repo" => {
@@ -18,7 +18,7 @@ module GGEV
       ]
     }
 
-    def self.default()
+    def self::default()
       @@default
     end
 

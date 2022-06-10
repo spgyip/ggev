@@ -8,11 +8,28 @@ gem install ggev
 ggev init
 ```
 
+# Usage
+
+
+```
+        -------------------------------(commit -p)--------------------------
+        |                                                                  |
+        |   ----------------(commit)------     -------(push)--------       |
+        |   |                            |     |                   |       |
+        |   |                           \|/    |                  \|/     \|/
+       |-----------|                    |-----------|             |------------|
+       |local-files| <=====(diff)====>  |local-repos|             |remote-repos|
+       |-----------|                    |-----------|             |------------|
+       /|\ /|\                           |    /|\                  |       |
+        |   |                            |     |                   |       |
+        |   -------(update)---------------     -------(fetch)-------       |
+        |                                                                  |
+        ----------------------------------(pull)----------------------------
+```
+
 # TODO
 
 - [X] Use `gem`
 - [X] Command `init`
-- [ ] Check local version when `push`
-- [ ] Specify module for `push/pull`
-- [ ] Watch filesystem changed
-- [ ] Reconstruct command processor
+- [X] Reconstruct command dispatcher
+- [ ] New workflow commit/push/update/fetch/diff
