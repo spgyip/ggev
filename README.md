@@ -33,3 +33,4 @@ ggev init
 - [X] Command `init`
 - [X] Reconstruct command dispatcher
 - [ ] New workflow commit/push/update/fetch/diff
+- [ ] Configure github action to publish rubygem

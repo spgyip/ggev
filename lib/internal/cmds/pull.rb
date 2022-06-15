@@ -12,10 +12,17 @@ module GGEV
     end
 
     def proc(argv) 
-      ifForce = false
-      cfg = YAML::load_file(GGEV::DEFAULT_CONFIG_FILE)
+      cfg = {}
+      begin
+        cfg = YAML::load_file(GGEV::DEFAULT_CONFIG_FILE)
+      rescue Exception => e
+        puts "Load config file fail: #{GGEV::DEFAULT_CONFIG_FILE}."
+        puts "Please run `ggev init`."
+        return
+      end
 
       # Process args
+      ifForce = false
       ARGV.each { |arg|
         if arg=="-f" or arg=="--force" 
           ifForce = true

@@ -20,10 +20,10 @@ def usage(prog, cmdNames)
 end
 
 # Main
-cmdDisp = GGEV::CommandDispatcher.new
-cmdDisp.add(GGEV::InitCommand.new)
-cmdDisp.add(GGEV::PushCommand.new)
-cmdDisp.add(GGEV::PullCommand.new)
+cmd_dsp = GGEV::CommandDispatcher.new
+cmd_dsp.add(GGEV::InitCommand.new)
+cmd_dsp.add(GGEV::PushCommand.new)
+cmd_dsp.add(GGEV::PullCommand.new)
 
 ## Options arguments,
 #  Start with '-'.
@@ -43,7 +43,7 @@ ARGV.each { |arg|
     end
     return
   elsif arg=='-h' or arg=='--help'
-    usage($PROGRAM_NAME, cmdDisp.names)
+    usage($PROGRAM_NAME, cmd_dsp.names)
     return
   else
     puts "Unknown option \"#{arg}\""
@@ -55,8 +55,8 @@ ARGV.slice!(n_opts-1) if n_opts>0
 ## Command name
 cmdname = ARGV.slice!(0)
 if cmdname==nil 
-  usage($PROGRAM_NAME, cmdDisp.names)
+  usage($PROGRAM_NAME, cmd_dsp.names)
   return
 end
-cmdDisp.proc(cmdname, ARGV) or puts "Unknown command \"#{cmdname}\""
+cmd_dsp.proc(cmdname, ARGV) or puts "Unknown command \"#{cmdname}\""
 

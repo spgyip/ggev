@@ -14,7 +14,14 @@ module GGEV
     end
 
     def proc(argv) 
-      cfg = YAML::load_file(GGEV::DEFAULT_CONFIG_FILE)
+      cfg = {}
+      begin
+        cfg = YAML::load_file(GGEV::DEFAULT_CONFIG_FILE)
+      rescue Exception => e
+        puts "Load config file fail: #{GGEV::DEFAULT_CONFIG_FILE}."
+        puts "Please run `ggev init`."
+        return
+      end
 
       cfg["modules"].each { |mod|
         puts "Processing module #{mod["name"]} ..."
